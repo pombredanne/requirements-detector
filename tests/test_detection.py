@@ -54,6 +54,10 @@ class DependencyDetectionTest(TestCase):
         expected = self._expected('django<1.6', 'django')
         self.assertEqual(expected, sorted(dependencies))
 
+    def test_invalid_requirements_txt(self):
+        filepath = os.path.join(os.path.dirname(__file__), 'detection/test6/requirements.txt')
+        from_requirements_txt(filepath)
+
     def _test_setup_py(self, setup_py_file, *expected):
         filepath = os.path.join(os.path.dirname(__file__), 'detection/test4', setup_py_file)
         dependencies = from_setup_py(filepath)
@@ -78,6 +82,12 @@ class DependencyDetectionTest(TestCase):
 
     def test_utf8_setup_py(self):
         self._test_setup_py('utf8.py', 'Django==1.5.0', 'django-gubbins==1.1.2')
+
+    def test_requires_setup_py(self):
+        self._test_setup_py('uses_requires.py', 'Django==1.5.0', 'django-gubbins==1.1.2')
+
+    def test_requires_and_install_requires_setup_py(self):
+        self._test_setup_py('uses_requires_and_install_requires.py', 'Django==1.5.0', 'django-gubbins==1.1.2')
 
     def test_callable_install_requires(self):
         self._test_setup_py_not_parseable('callable.py')

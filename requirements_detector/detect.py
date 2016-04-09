@@ -54,11 +54,11 @@ def _load_file_contents(filepath):
         for line in encoding_lines:
             match = _ENCODING_REGEXP.search(line)
             if match is None:
-                result.append(line)
+                result.append(line.strip())
             else:
                 encoding = match.group(1)
 
-        result += contents[2:]
+        result += [line.rstrip() for line in contents[2:]]
         result = '\n'.join(result)
         return result.decode(encoding)
 
@@ -152,23 +152,26 @@ class SetupWalker(object):
             values.append(child_node.value)
         return values
 
-    def get_install_requires(self):
+    def get_requires(self):
         # first, if we have a call to setup, then we can see what its "install_requires" argument is
         if not self._setup_call:
             raise CouldNotParseRequirements
+
+        found_requirements = []
 
         for child_node in self._setup_call.get_children():
             if not isinstance(child_node, Keyword):
                 # do we want to try to handle positional arguments?
                 continue
 
-            if child_node.arg != 'install_requires':
+            if child_node.arg not in ('install_requires', 'requires'):
                 continue
 
             if isinstance(child_node.value, (List, Tuple)):
                 # joy! this is a simple list or tuple of requirements
                 # this is a Keyword -> List or Keyword -> Tuple
-                return self._get_list_value(child_node.value)
+                found_requirements += self._get_list_value(child_node.value)
+                continue
 
             if isinstance(child_node.value, Name):
                 # otherwise, it's referencing a value defined elsewhere
@@ -179,27 +182,38 @@ class SetupWalker(object):
                     raise CouldNotParseRequirements
                 else:
                     if isinstance(reqs, (List, Tuple)):
-                        return self._get_list_value(reqs)
+                        found_requirements += self._get_list_value(reqs)
+                        continue
 
             # otherwise it's something funky and we can't handle it
             raise CouldNotParseRequirements
 
-        # if we've fallen off the bottom, we simply didn't find anything useful
+        # if we've fallen off the bottom with nothing in our list of requirements,
+        #  we simply didn't find anything useful
+        if len(found_requirements) > 0:
+            return found_requirements
         raise CouldNotParseRequirements
 
 
 def from_setup_py(setup_file):
     try:
+        from astroid import AstroidBuildingException
+    except ImportError:
+        syntax_exceptions = (SyntaxError,)
+    else:
+        syntax_exceptions = (SyntaxError, AstroidBuildingException)
+
+    try:
         contents = _load_file_contents(setup_file)
         ast = AstroidBuilder(MANAGER).string_build(contents)
-    except SyntaxError:
+    except syntax_exceptions:
         # if the setup file is broken, we can't do much about that...
         raise CouldNotParseRequirements
 
     walker = SetupWalker(ast)
 
     requirements = []
-    for req in walker.get_install_requires():
+    for req in walker.get_requires():
         requirements.append(DetectedRequirement.parse(req, setup_file))
 
     return requirements
