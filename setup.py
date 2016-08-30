@@ -4,7 +4,7 @@ from setuptools import find_packages
 import sys
 
 
-_version = "0.5.1"
+_version = "0.5.2"
 _packages = find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"])
 
 _short_description = "Python tool to find and list requirements of a Python project"
@@ -20,8 +20,7 @@ _CLASSIFIERS = (
     'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
-    'License :: OSI Approved :: '
-    'GNU General Public License v2 or later (GPLv2+)',
+    'License :: OSI Approved :: MIT License',
 )
 
 
